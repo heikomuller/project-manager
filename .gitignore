@@ -1,0 +1,4 @@
+*.pyc
+build/
+dist/
+prjrepo.egg-info/

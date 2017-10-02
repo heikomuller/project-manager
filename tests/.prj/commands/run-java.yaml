@@ -1,0 +1,11 @@
+type: EXEC
+spec:
+    elements:
+        - type: CONST
+          value: 'java -jar ./lib/JavaTest.jar'
+        - type: VAR
+          value: 'myFile.[[db/prefix]].txt'
+          vartype: FILE
+          isInput: True
+        - type: CONST
+          value: 'test'
