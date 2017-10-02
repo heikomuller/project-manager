@@ -226,7 +226,8 @@ class Config(object):
             if not value is None:
                 el[key] = value
             elif not el is None:
-                del el[key]
+                if key in el:
+                    del el[key]
             # Write the modified settings to the context file
             with open(filename, 'w') as f:
                 yaml.dump(settings, f, default_flow_style=False)
@@ -341,6 +342,9 @@ def read_settings(filename):
     # Read the settings file if it exist. Otherwise return an empty dictionary.
     if os.path.isfile(filename):
         with open(filename, 'r') as f:
-            return yaml.load(f.read())
+            obj = yaml.load(f.read())
+            if obj is None:
+                obj = dict()
+            return obj
     else:
         return dict()

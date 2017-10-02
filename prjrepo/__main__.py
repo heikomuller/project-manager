@@ -1,10 +1,32 @@
 #!/home/heiko/.venv/prj/bin/python
 
+import yaml
 import sys
 
-import prjrepo as prj
 import prjrepo.config as conf
+import prjrepo.config.context as cntxt
 
+
+# ------------------------------------------------------------------------------
+# Global Variables
+# ------------------------------------------------------------------------------
+
+"""Command names."""
+# Manipulate local context
+CMD_CONTEXT = 'context'
+# Initialize the project repository
+CMD_INIT = 'init'
+# Command history
+CMD_LOG = 'log'
+# Run a script as part of an experiment
+CMD_RUN = 'run'
+# Manipulate project variables
+CMD_PROJECT = 'project'
+
+
+# ------------------------------------------------------------------------------
+# API
+# ------------------------------------------------------------------------------
 
 def help(prg_name):
     """Print the default help statement containig a short description of the
@@ -43,20 +65,41 @@ def main(prg_name, args):
     # The first argument is the command name
     cmd_name = args[0]
     cmd_help = ['usage:', prg_name, args[0]]
-    if cmd_name == prj.CMD_INIT:
+    if cmd_name == CMD_INIT:
         # Initialize a new repository. Init does not take any further arguments.
         if len(args) == 1:
             conf.init_repository()
         else:
             print ' '.join(cmd_help)
-    elif cmd_name == prj.CMD_CONTEXT:
-        print ' '.join(cmd_help)
-    elif cmd_name == prj.CMD_LOG:
+    elif cmd_name == CMD_CONTEXT:
+        if len(args) == 1:
+            # List context settings for current directory
+            print yaml.dump(
+                cntxt.ContextManager('.').context_settings().settings,
+                default_flow_style=False
+            )
+        elif len(args) == 2 and args[-1] == '--create':
+            # --create
+            # Create an empty context in the current working directory
+            cntxt.ContextManager('.').create_context()
+        elif len(args) == 3 and args[1] == '--delete':
+            context = cntxt.ContextManager('.')
+            context.context_settings().update_value(args[2], value=None)
+        elif len(args) == 3 and args[1] == '--delete-cascade':
+            context = cntxt.ContextManager('.')
+            context.context_settings().update_value(args[2], value=None, cascade=True)
+        elif len(args) == 4 and args[1] == '--create':
+            context = cntxt.ContextManager('.')
+            context.create_context()
+            context.context_settings().update_value(args[2], value=args[3])
+        else:
+            print ' '.join(cmd_help)
+    elif cmd_name == CMD_LOG:
         # Print the list of experiment script commands that have been run
         pass #cmd.print_log()
-    elif cmd_name == prj.CMD_PROJECT:
+    elif cmd_name == CMD_PROJECT:
         print ' '.join(cmd_help)
-    elif cmd_name == prj.CMD_RUN:
+    elif cmd_name == CMD_RUN:
         print ' '.join(cmd_help)
     elif cmd_name == '--help':
         print help(prg_name)
