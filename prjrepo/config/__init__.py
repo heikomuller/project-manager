@@ -8,7 +8,7 @@ import os
 """Name of the directories that contains the reporitory data."""
 COMMAND_DIR = 'commands'
 CONTEXT_DIR = 'contexts'
-REPO_DIR = '.prj'
+REPO_DIR = '.prm'
 
 
 """Name of configuration files."""

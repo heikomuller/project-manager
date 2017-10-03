@@ -155,19 +155,7 @@ class Config(object):
         -------
         string
         """
-        el = self.settings
-        for comp in para.split('.'):
-            if isinstance(el, dict):
-                if comp in el:
-                    el = el[comp]
-                else:
-                    raise ValueError('unknown parameter \'' + para + '\'')
-            else:
-                raise ValueError('cannot get value of \'' + para + '\'')
-        if not isinstance(el, dict):
-            return el
-        else:
-            raise ValueError('cannot get value of \'' + para + '\'')
+        return get_settings_value(self.settings, para)
 
     @property
     def settings(self):
@@ -202,7 +190,7 @@ class Config(object):
         key = path[-1].strip()
         if key == '':
             raise ValueError('invalid parameter name \'' + para + '\'')
-        if cascade:
+        if cascade and len(self.path) > 1:
             start = 1
         else:
             start = len(self.files) - 1
@@ -237,6 +225,25 @@ class Config(object):
 # ------------------------------------------------------------------------------
 # Helper Methods
 # ------------------------------------------------------------------------------
+
+def get_settings_value(settings, para, var_list=[]):
+    el = settings
+    for comp in para.split('.'):
+        if isinstance(el, dict):
+            if comp in el:
+                el = el[comp]
+            else:
+                raise ValueError('unknown parameter \'' + para + '\'')
+        else:
+            raise ValueError('cannot get value of \'' + para + '\'')
+    if not isinstance(el, dict):
+        if isinstance(el, basestring):
+            return resolve_variables(settings, el, var_list)
+        else:
+            return el
+    else:
+        raise ValueError('cannot get value of \'' + para + '\'')
+
 
 def is_dir(parent, sub_folder):
     """Raise RuntimeError if the given sub-folder is not an existing directory
@@ -348,3 +355,19 @@ def read_settings(filename):
             return obj
     else:
         return dict()
+
+
+def resolve_variables(settings, value, var_list):
+    while '[[' in value:
+        i_start = value.find('[[')
+        i_end = value.find(']]', i_start)
+        if i_end == -1:
+            raise ValueError('invalid variable expression \'' + value + '\'')
+        var_name = value[i_start+2:i_end]
+        if var_name in var_list:
+            raise ValueError('recursive reference for \'' + var_list[0] + '\'')
+        var_list.append(var_name)
+        val = get_settings_value(settings, var_name, var_list=var_list)
+        var_list.pop()
+        value = value[:i_start] + val + value[i_end+2:]
+    return value

@@ -1,4 +1,4 @@
-#!/home/heiko/.venv/prj/bin/python
+#!/home/heiko/.venv/prm/bin/python
 
 import yaml
 import sys
@@ -41,14 +41,19 @@ def help(prg_name):
 
 These are the commands for the project repository manager:
 
-  init                                 Initialize a new project repository
+  init      Initialize a new project repository
 
-  context [--create] [<var> <value>]   List and set context variables
-  project [<var> <value>]              List and set project variables
+  context   List and set context variables
+            [--create [<var> <value>]]
+            --delete <var>
+            --delete-cascade <var>
+  project   List and set project variables
+            [<var> <value>]
 
-  log                                  Show execution history
+  log       Show execution history
 
-  run <command-name> [<arguments>]     Run a registered script command
+  run       Run a registered script command
+            <command-name> [<arguments>]
 """
 
 
@@ -72,6 +77,7 @@ def main(prg_name, args):
         else:
             print ' '.join(cmd_help)
     elif cmd_name == CMD_CONTEXT:
+        # Local context settings
         if len(args) == 1:
             # List context settings for current directory
             print yaml.dump(
@@ -82,26 +88,67 @@ def main(prg_name, args):
             # --create
             # Create an empty context in the current working directory
             cntxt.ContextManager('.').create_context()
+        elif len(args) == 2:
+            # <var>
+            # Print variable value
+            print cntxt.ContextManager('.').context_settings().get_value(args[1])
         elif len(args) == 3 and args[1] == '--delete':
             context = cntxt.ContextManager('.')
             context.context_settings().update_value(args[2], value=None)
         elif len(args) == 3 and args[1] == '--delete-cascade':
             context = cntxt.ContextManager('.')
             context.context_settings().update_value(args[2], value=None, cascade=True)
+        elif len(args) == 3:
+            context = cntxt.ContextManager('.')
+            context.context_settings().update_value(args[1], value=args[2])
         elif len(args) == 4 and args[1] == '--create':
             context = cntxt.ContextManager('.')
             context.create_context()
             context.context_settings().update_value(args[2], value=args[3])
         else:
+            cmd_help += [
+                '[',
+                '[--create] [<var> <value>]',
+                '|',
+                '--delete <var>',
+                '|',
+                '--delete-cascade <var>',
+                ']'
+            ]
             print ' '.join(cmd_help)
     elif cmd_name == CMD_LOG:
         # Print the list of experiment script commands that have been run
-        pass #cmd.print_log()
+        if len(args) == 1:
+            print_log()
+        else:
+            print ' '.join(cmd_help)
     elif cmd_name == CMD_PROJECT:
-        print ' '.join(cmd_help)
+        # Global project settings
+        if len(args) == 1:
+            # List context settings for current directory
+            print yaml.dump(
+                cntxt.ContextManager('.').project_settings().settings,
+                default_flow_style=False
+            )
+        elif len(args) == 3 and args[1] == '--delete':
+            context = cntxt.ContextManager('.')
+            context.project_settings().update_value(args[2], value=None)
+        elif len(args) == 3:
+            context = cntxt.ContextManager('.')
+            context.project_settings().update_value(args[1], value=args[2])
+        else:
+            cmd_help += [
+                '[',
+                '<var> <value>',
+                '|',
+                '--delete <var>',
+                ']'
+            ]
+            print ' '.join(cmd_help)
     elif cmd_name == CMD_RUN:
         print ' '.join(cmd_help)
     elif cmd_name == '--help':
+        # Print help information
         print help(prg_name)
     else:
         print prg_name + ': \'' + cmd_name + '\' is not a ' + prg_name + ' command. See \'' + prg_name + ' --help.'

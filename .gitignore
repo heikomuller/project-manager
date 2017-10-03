@@ -2,3 +2,5 @@
 build/
 dist/
 prjrepo.egg-info/
+tests/db/
+tests/.prj/contexts/
