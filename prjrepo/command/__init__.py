@@ -6,21 +6,19 @@
 # ------------------------------------------------------------------------------
 
 """Type of components in a command specification."""
-COMMAND_ELEMENT_CONST = 'CONST'
-COMMAND_ELEMENT_VAR = 'VAR'
-COMMAND_ELEMENT_TYPES = [COMMAND_ELEMENT_CONST, COMMAND_ELEMENT_VAR]
+COMPONENT_TYPE_CONST = 'CONST'
+COMPONENT_TYPE_VAR = 'VAR'
+COMPONENT_TYPES = [COMPONENT_TYPE_CONST, COMPONENT_TYPE_VAR]
 
 """Type identifier for executable commands."""
 COMMAND_TYPE_EXEC = 'EXEC'
 COMMAND_TYPE_SQL = 'SQL'
 COMMAND_TYPES = [COMMAND_TYPE_EXEC, COMMAND_TYPE_SQL]
 
-"""Variable types."""
-VARIABLE_TYPE_DIR = 'DIR'
-VARIABLE_TYPE_FILE = 'FILE'
-VARIABLE_TYPE_VALUE = 'VAL'
-VARIABLE_TYPES = [VARIABLE_TYPE_DIR, VARIABLE_TYPE_FILE, VARIABLE_TYPE_VALUE]
-VARIABLE_IO_TYPES = [VARIABLE_TYPE_DIR, VARIABLE_TYPE_FILE]
+"""IO component types."""
+IO_TYPE_DIR = 'DIR'
+IO_TYPE_FILE = 'FILE'
+IO_TYPES = [IO_TYPE_DIR, IO_TYPE_FILE]
 
 # ------------------------------------------------------------------------------
 # Command Specification
@@ -53,7 +51,7 @@ class Command(object):
         command_type : string
             Command type identifier. Valid type identifier are listed in
             COMMAND_TYPES
-        elements: list(CommandElement)
+        elements: list(CommandComponent)
             List of command elements from which the executable command is being
             generated
         output_spec
@@ -95,7 +93,7 @@ class ExecCommand(Command):
         ----------
         name: string
             Command name
-        elements: list(CommandElement)
+        elements: list(CommandComponent)
             List of command elements from which the executable command is being
             generated
         output_spec
@@ -117,7 +115,7 @@ class SQLCommand(Command):
         ----------
         name: string
             Command name
-        elements: list(CommandElement)
+        elements: list(CommandComponent)
             List of command elements from which the SQL statement is being
             generated
         output_spec
@@ -130,122 +128,115 @@ class SQLCommand(Command):
         )
 
 
-class CommandElement(object):
-    """Component in the specification of an executable command. Command elements
-    are either constant values or references to variables.
+class CommandComponent(object):
+    """Component in the specification of an executable command. Componets are
+    either constant values or contain references to variables (enclused in
+    double square brackets). A command component may identify a file or
+    directory (i.e., an IO component).
+
+    For IO components the as_input flag defines whether ther referenced file/
+    directory is used as input by the command. Input files do not need to
+    exist in the current working directory event if references are relative. The
+    system automatically will find the first existing file that matches the
+    component value along the path from the current working directory to the
+    project repository root.
     """
-    def __init__(self, element_type, value):
-        """Initialize the element type and value.
+    def __init__(self, obj_type, value, io_type=None, as_input=False):
+        """Initialize the component type and value.
 
         Raises ValueError if an invalid element type is given. Valid type
-        identifier are defined in COMMAND_ELEMENT_TYPES.
+        identifier are defined in COMPONENT_TYPES.
+
+        For variable components it is ensured that all variables are properly
+        enclosed in double pairs of square brackes.
+
+        The as_input flag is ignored if the component does not reference an IO
+        resource.
 
         Parameters
         ----------
-        element_type: string
-            Unique identifier of the element type
+        obj_type: string
+            Unique component type identifier
         value: string
-            Element value
+            Component value
+        io_type: string, optional
+            IO type specifications for components that reference files or
+            directories
         """
-        if not element_type in COMMAND_ELEMENT_TYPES:
-            raise ValueError('invalid element type \'' + element_type + '\'')
-        self.element_type = element_type
+        # Make sure that given component type is valid
+        if not obj_type in COMPONENT_TYPES:
+            raise ValueError('invalid component type \'' + obj_type + '\'')
+        # Make sure that IO type is valie (if given)
+        if not io_type is None:
+            if not io_type in IO_TYPES:
+                raise ValueError('invalid IO type \'' + io_type + '\'')
+        # If component type is variable, parse variable values
+        if obj_type == COMPONENT_TYPE_VAR:
+            self.tokens = []
+            val = value
+            while '[[' in val:
+                i_start = val.find('[[')
+                i_end = val.find(']]', i_start)
+                if i_end == -1:
+                    raise ValueError('invalid variable expression \'' + value + '\'')
+                if i_start > 0:
+                    self.tokens.append(val[:i_start])
+                self.tokens.append(val[i_start:i_end+2])
+                val = val[i_end + 2:]
+            if val != '':
+                self.tokens.append(val)
+        self.obj_type = obj_type
+        self.io_type = io_type
         self.value = value
 
     @property
     def is_const(self):
-        """Flag indicating whther this is a constant element.
+        """Flag indicating whether this is a constant component.
 
         Returns
         -------
         bool
         """
-        return self.element_type == COMMAND_ELEMENT_CONST
+        return self.element_type == COMPONENT_TYPE_CONST
 
     @property
     def is_var(self):
-        """Flag indicating whther this is a variable element.
+        """Flag indicating whether this is a variable component.
 
         Returns
         -------
         bool
         """
-        return self.element_type == COMMAND_ELEMENT_VAR
-
-
-class ConstantElement(CommandElement):
-    """Constant command element."""
-    def __init__(self, value):
-        """Initialize the element value.
-
-        Parameters
-        ----------
-        value: string
-            Element value
-        """
-        super(ConstantElement, self).__init__(COMMAND_ELEMENT_CONST, value)
-
-
-class VariableElement(CommandElement):
-    """Command element referencing a variable value. Variable elements further
-    specify the type of the variable value they are referencing: VAL or IO.
-
-    If the variable type is IO the variable value is expected to either
-    reference a file or directory on disk. Furthermore, if the value is
-    designated as an input to the command the system will search for the
-    referenced file/directory along the project/database/experiment path.
-    """
-    def __init__(self, variable_type, variable_name):
-        """Initialize variable type and name
-
-        Raises ValueError if an invalid variable type is specified. Valid
-        variable types are defined in VARIABLE_TYPES.
-
-        Parameters
-        ----------
-        variable_type: string
-            Unique variable type identifier
-        variable_name: string
-            Path expression referencing the variable name
-        """
-        if not variable_type in VARIABLE_TYPES:
-            raise ValueError('invalid variable type \'' + variable_type + '\'')
-        super(VariableElement, self).__init__(
-            COMMAND_ELEMENT_VAR,
-            variable_name
-        )
-        self.variable_type = variable_type
+        return self.element_type == COMPONENT_TYPE_VAR
 
     @property
-    def name(self):
-        """The vaiable name is stored in the element value."""
-        return self.value
+    def ref_dir(self):
+        """Flag indicating whether the component references a directory
+        resource.
 
-
-class VariableIOElement(VariableElement):
-    """Command element that references a file or directory. It is exoected that
-    references to file system resources are relative paths. If the value is used
-    as input to a command the system will search for an existing file/directory
-    with the given name along the search pato of experiment, database, and
-    project directory.
-    """
-    def __init__(self, variable_type, variable_name, is_input=False):
-        """Initialize variable type, name, and input flag.
-
-        Raises ValueError if an invalid IO variable type is specified. Valid
-        variable types are defined in VARIABLE_IO_TYPES.
-
-        Parameters
-        ----------
-        variable_type: string
-            Unique variable type identifier
-        variable_name: string
-            Path expression referencing the variable name
-        is_input: bool
-            Flag indocating whether the variable value references a file/dir
-            that is used as input by the executed program.
+        Returns
+        -------
+        bool
         """
-        if not variable_type in VARIABLE_IO_TYPES:
-            raise ValueError('invalid variable type \'' + variable_type + '\'')
-        super(VariableIOElement, self).__init__(variable_type, variable_name)
-        self.is_input = is_input
+        return not self.io_type is None and self.io_type == IO_TYPE_DIR
+
+    @property
+    def ref_file(self):
+        """Flag indicating whether the component references a file resource.
+
+        Returns
+        -------
+        bool
+        """
+        return not self.io_type is None and self.io_type == IO_TYPE_FILE
+
+
+    @property
+    def refio(self):
+        """Flag indicating whether the component references an IO resource.
+
+        Returns
+        -------
+        bool
+        """
+        return not self.io_type is None

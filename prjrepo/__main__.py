@@ -5,6 +5,7 @@ import sys
 
 import prjrepo.config as conf
 import prjrepo.config.context as cntxt
+import prjrepo.engine as eng
 
 
 # ------------------------------------------------------------------------------
@@ -146,12 +147,46 @@ def main(prg_name, args):
             ]
             print ' '.join(cmd_help)
     elif cmd_name == CMD_RUN:
-        print ' '.join(cmd_help)
+        # Run a registered command
+        # <command-name> [<arguments> ...]
+        if len(args) >= 2:
+            eng.WorkflowEngine().run_command(
+                cntxt.ContextManager('.'),
+                args[1],
+                parse_args(args[2:])
+            )
+        else:
+            cmd_help += ['<command-name>', '[<arguments> ...]']
+            print ' '.join(cmd_help)
     elif cmd_name == '--help':
         # Print help information
         print help(prg_name)
     else:
         print prg_name + ': \'' + cmd_name + '\' is not a ' + prg_name + ' command. See \'' + prg_name + ' --help.'
+
+
+def parse_args(args):
+    """Get a dictionary of arguments from a list of argument that are expected
+    to be key=value pairs.
+
+    Raises ValueError if arguments are not in expected format.
+
+    Parameters
+    ----------
+    args: list(string)
+        Command line arguments in format key=value
+
+    Returns
+    -------
+    dict
+    """
+    arguments = dict()
+    for arg in args:
+        pos = arg.find('=')
+        if pos < 0:
+            raise ValueError('invalid argument \'' + arg + '\'')
+        arguments[arg[:pos]] = arg[pos+1:]
+    return arguments
 
 
 if __name__ == '__main__':

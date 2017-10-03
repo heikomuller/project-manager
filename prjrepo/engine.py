@@ -1,3 +1,28 @@
+"""Workflow command execution engine."""
+
+
+class WorkflowEngine(object):
+    def run_command(self, context, cmd_name, args):
+        """Run the registered command with given name. Provides the context for
+        execution and a list of arguments that override context settings. The
+        command repository is accessible via the context manager.
+
+        Parameters
+        ----------
+        context: prjrepo.config.context.ContextManager
+            Execution context
+        cmd_name: string
+            Command name
+        args: dict
+            List of arguments that overrie context settings
+        """
+        # Get command specification. Will raise ValueError if command name is
+        # unknown
+        cmd = context.commands().get_command(cmd_name)
+        # Get context variables
+        settings = context.context_settings()
+
+
 def run_command(prg_name, name, args, run_local=True):
     """Run the experiment script with the given name. Constructs the command
     to run the script from the current configuration settings and optional

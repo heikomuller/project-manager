@@ -75,7 +75,6 @@ class DefaultCommandRepository(CommandRepository):
         """
         f_name = os.path.join(self.base_dir, name + self.COMMAND_SPEC_SUFFIX)
         if not os.path.isfile(f_name):
-            print f_name
             raise ValueError('unknown command \'' + name + '\'')
         # Read the command specification in Yaml format
         with open(f_name, 'r') as f:
