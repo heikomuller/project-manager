@@ -21,7 +21,8 @@ class WorkflowEngine(object):
         cmd = context.commands().get_command(cmd_name)
         # Get context variables
         settings = context.context_settings()
-
+        for el in cmd.elements:
+            
 
 def run_command(prg_name, name, args, run_local=True):
     """Run the experiment script with the given name. Constructs the command
