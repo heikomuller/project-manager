@@ -13,6 +13,7 @@ class ContextManager(object):
         if not os.path.isdir(work_dir):
             raise ValueError('not a directory \'' + work_dir + '\'')
         abs_dir = os.path.abspath(work_dir)
+        self.work_dir = abs_dir
         # Get the project directory and the relative path from the project
         # directory to the working directory. Ensure that REPO_DIR is not part
         # of the working directory path
@@ -52,7 +53,7 @@ class ContextManager(object):
         -------
         prjrepo.config.context.Config
         """
-        return Config(self.get_context_files(), self.path)
+        return Config(self.get_context_files(), False)
 
     def commands(self):
         """Get the command repository for the project context.
@@ -110,6 +111,41 @@ class ContextManager(object):
                     )
         return context_files
 
+    def locate_input_file(self, name, is_file):
+        """Locate an input file (ordirectory) in the context path. Returns the
+        first resource that matches the given name (i.e., relative path). The
+        search progresses from the context directory down to the project
+        directory.
+
+        Raises ValueError if no matching resource is found or if the resource
+        is not of the expected type.
+
+        Parameters
+        ----------
+        name: string
+            Relative path of file or directory
+        is_file: bool
+            Flag indicating whether the resource should be a file (True) or a
+            directory (False).
+
+        Returns
+        -------
+        string
+        """
+        base_dir = self.work_dir
+        i = 0
+        while i <= len(self.path):
+            f_path = os.path.join(base_dir, name)
+            if is_file and os.path.isfile(f_path):
+                return os.path.relpath(f_path, self.work_dir)
+            elif not is_file and os.path.isdir(f_path):
+                return os.path.relpath(f_path, self.work_dir)
+            elif os.path.isfile(f_path) or os.path.isdir(f_path):
+                raise ValueError('unexpected type \'' + f_path + '\'')
+            i += 1
+            base_dir, dir_name = os.path.split(base_dir)
+        raise ValueError('file not found \'' + name + '\'')
+
     def project_settings(self):
         """Get project settings for the context's project.
 
@@ -117,12 +153,12 @@ class ContextManager(object):
         -------
         prjrepo.config.context.Config
         """
-        return Config([('', self.settings_file)], [])
+        return Config([('', self.settings_file)], True)
 
 
 class Config(object):
     """Object excapsulating context settings."""
-    def __init__(self, settings, path):
+    def __init__(self, settings, is_project_config):
         """Initialize the settings dictionary from the given dictionary and an
         optional dictionary containing default values.
 
@@ -133,13 +169,14 @@ class Config(object):
             directory to a given context. List elements are tuples where the
             first value is the relative path expression and the second value is
             a reference to the context file.
-        path: list(string)
-            Directory names along the path from the project base directory to
-            the context directory.
+        is_project_config: bool
+            Flag indicating whether this object represents the project settings
+            or settings for a project context.
         """
         self.files = settings
+        self.is_project_config = is_project_config
 
-    def get_value(self, para):
+    def get_value(self, para, default_values=dict()):
         """Return the value that is associated with the given parameter. The
         parameter expression can be a path expression.
 
@@ -155,7 +192,7 @@ class Config(object):
         -------
         string
         """
-        return get_settings_value(self.settings, para)
+        return get_settings_value(self.settings, para, default_values=default_values)
 
     @property
     def settings(self):
@@ -190,7 +227,7 @@ class Config(object):
         key = path[-1].strip()
         if key == '':
             raise ValueError('invalid parameter name \'' + para + '\'')
-        if cascade and len(self.path) > 1:
+        if cascade and not self.is_project_config:
             start = 1
         else:
             start = len(self.files) - 1
@@ -226,19 +263,21 @@ class Config(object):
 # Helper Methods
 # ------------------------------------------------------------------------------
 
-def get_settings_value(settings, para, var_list=[]):
+def get_settings_value(settings, para, var_list=[], default_values=dict()):
     el = settings
     for comp in para.split('.'):
         if isinstance(el, dict):
             if comp in el:
                 el = el[comp]
+            elif para in default_values:
+                return default_values[para]
             else:
-                raise ValueError('unknown parameter \'' + para + '\'')
+                return None
         else:
             raise ValueError('cannot get value of \'' + para + '\'')
     if not isinstance(el, dict):
         if isinstance(el, basestring):
-            return resolve_variables(settings, el, var_list)
+            return resolve_variables(settings, el, var_list, default_values)
         else:
             return el
     else:
@@ -357,7 +396,7 @@ def read_settings(filename):
         return dict()
 
 
-def resolve_variables(settings, value, var_list):
+def resolve_variables(settings, value, var_list, default_values):
     while '[[' in value:
         i_start = value.find('[[')
         i_end = value.find(']]', i_start)
@@ -367,7 +406,7 @@ def resolve_variables(settings, value, var_list):
         if var_name in var_list:
             raise ValueError('recursive reference for \'' + var_list[0] + '\'')
         var_list.append(var_name)
-        val = get_settings_value(settings, var_name, var_list=var_list)
+        val = get_settings_value(settings, var_name, var_list=var_list, default_values=default_values)
         var_list.pop()
         value = value[:i_start] + val + value[i_end+2:]
     return value

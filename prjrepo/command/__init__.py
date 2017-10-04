@@ -28,18 +28,18 @@ class Command(object):
     """Specification fpr a command that executes a program or script in the
     context of the current project. Command specifications are composed of four
     parts: (1) the command name, (2) the command type, (3) a list of command
-    elements, and (4) a description of the command output.
+    components, and (4) a description of the command output.
 
     There are currently two command types: EXEC and SQL. EXEC refers to an
     external executable and SQL refers to an SQL query statement.
 
-    The command itself is defined as a list of elements that are either string
-    constants or references to variables. In case of an EXEC command, the
-    concatenation of all elements forms the command line that executes the
+    The command itself is defined as a list of components that are either string
+    constants or contain references to variables. In case of an EXEC command,
+    the concatenation of all components forms the command line that executes the
     command with all arguments. In case of a SQL command, the concatenation
-    of all elements is the SQL statement that is being executed.
+    of all components is the SQL statement that is being executed.
     """
-    def __init__(self, name, command_type, elements, output_spec):
+    def __init__(self, name, command_type, components, output_spec):
         """Initialize the components of a command specification.
 
         Raises ValueError if an invalid command type is given.
@@ -51,16 +51,16 @@ class Command(object):
         command_type : string
             Command type identifier. Valid type identifier are listed in
             COMMAND_TYPES
-        elements: list(CommandComponent)
-            List of command elements from which the executable command is being
-            generated
+        components: list(CommandComponent)
+            List of command components from which the executable command is
+            being generated
         output_spec
         """
         if not command_type in COMMAND_TYPES:
             raise ValueError('invalid command type \'' + command_type + '\'')
         self.name = name
         self.command_type = command_type
-        self.elements = elements
+        self.components = components
         self.output_spec = output_spec
 
     @property
@@ -86,44 +86,44 @@ class Command(object):
 
 class ExecCommand(Command):
     """Specification of a command that runs an external executable."""
-    def __init__(self, name, elements, output_spec):
+    def __init__(self, name, components, output_spec):
         """Initialize the command element list and output specification.
 
         Parameters
         ----------
         name: string
             Command name
-        elements: list(CommandComponent)
-            List of command elements from which the executable command is being
-            generated
+        components: list(CommandComponent)
+            List of command components from which the executable command is
+            being generated
         output_spec
         """
         super(ExecCommand, self).__init__(
             name,
             COMMAND_TYPE_EXEC,
-            elements,
+            components,
             output_spec
         )
 
 
 class SQLCommand(Command):
     """Specification for a command that executes a SQL query."""
-    def __init__(self, name, elements, output_spec):
+    def __init__(self, name, components, output_spec):
         """Initialize the command element list and output specification.
 
         Parameters
         ----------
         name: string
             Command name
-        elements: list(CommandComponent)
-            List of command elements from which the SQL statement is being
+        components: list(CommandComponent)
+            List of command components from which the SQL statement is being
             generated
         output_spec
         """
         super(SQLCommand, self).__init__(
             name,
             COMMAND_TYPE_SQL,
-            elements,
+            components,
             output_spec
         )
 
@@ -188,6 +188,7 @@ class CommandComponent(object):
         self.obj_type = obj_type
         self.io_type = io_type
         self.value = value
+        self.as_input = as_input
 
     @property
     def is_const(self):
@@ -197,7 +198,7 @@ class CommandComponent(object):
         -------
         bool
         """
-        return self.element_type == COMPONENT_TYPE_CONST
+        return self.obj_type == COMPONENT_TYPE_CONST
 
     @property
     def is_var(self):
@@ -207,7 +208,7 @@ class CommandComponent(object):
         -------
         bool
         """
-        return self.element_type == COMPONENT_TYPE_VAR
+        return self.obj_type == COMPONENT_TYPE_VAR
 
     @property
     def ref_dir(self):
@@ -232,7 +233,7 @@ class CommandComponent(object):
 
 
     @property
-    def refio(self):
+    def ref_io(self):
         """Flag indicating whether the component references an IO resource.
 
         Returns
@@ -240,3 +241,41 @@ class CommandComponent(object):
         bool
         """
         return not self.io_type is None
+
+    def to_cmd_string(self, settings, default_values):
+        """Get the command string representation of this component. For Constant
+        components this is simply the value. For variable components all
+        variables are being resolved. The result is the concatenation of all
+        resolved tokens.
+
+        Raises ValueError if for a ariable component a referenced variable is
+        not set in the given context or default_values.
+
+        Parameters
+        ----------
+        settings: prjrepo.config.context.config
+            Variable context
+        default_values: dict
+            Default values for referenced variables that are not set in the
+            given context.
+
+        Returns
+        -------
+        string
+        """
+        if self.is_const:
+            return self.value
+        else:
+            values = []
+            for token in self.tokens:
+                if token.startswith('[[') and token.endswith(']]'):
+                    val = settings.get_value(
+                        token[2:-2],
+                        default_values=default_values
+                    )
+                    if val is None:
+                        raise ValueError('unknown variable \'' + token[2:-2] + '\'')
+                    values.append(val)
+                else:
+                    values.append(token)
+            return ''.join(values)

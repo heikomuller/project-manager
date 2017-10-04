@@ -2,7 +2,7 @@
 
 
 class WorkflowEngine(object):
-    def run_command(self, context, cmd_name, args):
+    def run_command(self, context, cmd_name, default_values):
         """Run the registered command with given name. Provides the context for
         execution and a list of arguments that override context settings. The
         command repository is accessible via the context manager.
@@ -13,16 +13,22 @@ class WorkflowEngine(object):
             Execution context
         cmd_name: string
             Command name
-        args: dict
-            List of arguments that overrie context settings
+        default_values: dict
+            List of arguments that are used as default values for variables that
+            are not set in the given context
         """
         # Get command specification. Will raise ValueError if command name is
         # unknown
         cmd = context.commands().get_command(cmd_name)
         # Get context variables
         settings = context.context_settings()
-        for el in cmd.elements:
-            
+        cmd_text = []
+        for el in cmd.components:
+            val = el.to_cmd_string(settings, default_values)
+            if el.ref_io and el.as_input:
+                val = context.locate_input_file(val, el.ref_file)
+            cmd_text.append(val)
+        print ' '.join(cmd_text)
 
 def run_command(prg_name, name, args, run_local=True):
     """Run the experiment script with the given name. Constructs the command
@@ -38,8 +44,8 @@ def run_command(prg_name, name, args, run_local=True):
     name: string
         Name of the script that is being run_command
     args: list(string)
-        Arguments that override the current configurations ettings (expected
-        format is <key>=<value>)
+        Arguments that are used as default values for variables that are not
+        set in the current context.
     run_local: bool, optional
         Flag indicating whether to actuall execute the script or only print
         and log the command line command for submission on a remote machine.
@@ -48,12 +54,12 @@ def run_command(prg_name, name, args, run_local=True):
     if not name in commands:
         raise ValueError('unknown command \'' + name + '\'')
     # Get a dictionary of arguments that override the configuration settings
-    local_args = dict()
+    default_values = dict()
     for arg in args:
         pos = arg.find('=')
         if pos < 0:
             raise ValueError('invalid argument \'' + arg + '\'')
-        local_args[arg[:pos]] = arg[pos+1:]
+        default_values[arg[:pos]] = arg[pos+1:]
     # Read the current experiment configuration settings and global variables
     config = get_settings()
     variables = get_global_variables()

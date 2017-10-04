@@ -3,7 +3,7 @@ import unittest
 from prjrepo.command.repository import DefaultCommandRepository
 
 
-COMMAND_DIR = './.prj/commands'
+COMMAND_DIR = './.prm/commands'
 
 
 class TestCommandRepository(unittest.TestCase):
@@ -23,15 +23,28 @@ class TestCommandRepository(unittest.TestCase):
         cmd = self.repo.get_command('list-datasets')
         self.assertTrue(cmd.is_sql)
         self.assertEquals(cmd.name, 'list-datasets')
-        self.assertEquals(len(cmd.elements), 2)
+        self.assertEquals(len(cmd.components), 2)
+        self.assertTrue(cmd.components[0].is_const)
+        self.assertTrue(cmd.components[1].is_var)
 
     def test_run_java_command(self):
         """Command to execute Java Jar file."""
         cmd = self.repo.get_command('run-java')
         self.assertTrue(cmd.is_exec)
         self.assertEquals(cmd.name, 'run-java')
-        self.assertEquals(len(cmd.elements), 3)
-        self.assertTrue(cmd.elements[1].is_input)
+        self.assertEquals(len(cmd.components), 3)
+        self.assertTrue(cmd.components[1].as_input)
+        self.assertTrue(cmd.components[0].is_const)
+        self.assertTrue(cmd.components[1].is_var)
+        self.assertTrue(cmd.components[1].ref_io)
+        self.assertTrue(cmd.components[1].ref_file)
+        self.assertTrue(cmd.components[1].as_input)
+        self.assertFalse(cmd.components[1].ref_dir)
+        self.assertTrue(cmd.components[2].is_const)
+        self.assertFalse(cmd.components[2].ref_io)
+        self.assertFalse(cmd.components[2].ref_file)
+        self.assertFalse(cmd.components[2].ref_dir)
+        self.assertFalse(cmd.components[2].as_input)
 
 
 if __name__ == '__main__':

@@ -79,32 +79,29 @@ class DefaultCommandRepository(CommandRepository):
         # Read the command specification in Yaml format
         with open(f_name, 'r') as f:
             doc = yaml.load(f.read())
-        # Generate list of command elements (idependent of command type)
-        elements = []
-        for el in doc['spec']['elements']:
-            if el['type'] == cmd.COMMAND_ELEMENT_CONST:
-                elements.append(cmd.ConstantElement(el['value']))
-            elif el['type'] == cmd.COMMAND_ELEMENT_VAR:
-                if el['vartype'] == cmd.VARIABLE_TYPE_VALUE:
-                    elements.append(
-                        cmd.VariableElement(el['vartype'], el['value'])
-                    )
-                elif el['vartype'] in cmd.VARIABLE_IO_TYPES:
-                    elements.append(
-                        cmd.VariableIOElement(
-                            el['vartype'],
-                            el['value'],
-                            el['isInput']
-                        )
-                    )
-                else:
-                    raise RuntimeError('unknown variable type \'' + el['vartype'] + '\'')
-            else:
-                raise RuntimeError('unknown element type \'' + el['type'] + '\'')
+        # Generate list of command elements (idependent of command type).
+        # Expected document structure is:
+        # - type: EXEC or SQL
+        #   spec:
+        #       components:
+        #           - type: CONST or VAR
+        #             value: string
+        #             ioType: FILE or DIR (optional)
+        #             asInput: bool (optional)
+        components = []
+        for el in doc['spec']['components']:
+            components.append(
+                cmd.CommandComponent(
+                    el['type'],
+                    el['value'],
+                    io_type=el['ioType'] if 'ioType' in el else None,
+                    as_input=el['asInput'] if 'asInput' in el else False
+                )
+            )
         if doc['type'] == cmd.COMMAND_TYPE_EXEC:
-            return cmd.ExecCommand(name, elements, None)
+            return cmd.ExecCommand(name, components, None)
         elif doc['type'] == cmd.COMMAND_TYPE_SQL:
-            return cmd.SQLCommand(name, elements, None)
+            return cmd.SQLCommand(name, components, None)
         else:
             raise RuntimeError('unknown command type \'' + doc['vartype'] + '\'')
 

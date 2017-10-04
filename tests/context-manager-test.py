@@ -6,7 +6,7 @@ import yaml
 import prjrepo.config as conf
 from prjrepo.config.context import ContextManager
 
-PROJECT_DIR = './.prj'
+PROJECT_DIR = './.prm'
 WORK_DIR = './db'
 SUB_DIR = './db/sub'
 
@@ -82,19 +82,16 @@ class TestContextManager(unittest.TestCase):
         settings = ContextManager('.').context_settings()
         self.assertEquals(settings.get_value('a'), 1)
         self.assertEquals(settings.get_value('b'), 2)
-        with self.assertRaises(ValueError):
-            settings.get_value('c')
+        self.assertIsNone(settings.get_value('c'))
         ContextManager(SUB_DIR).context_settings().update_value('c', value=None, cascade=True)
         settings = ContextManager(SUB_DIR).context_settings()
         self.assertEquals(settings.get_value('a'), 1)
         self.assertEquals(settings.get_value('b'), 1)
-        with self.assertRaises(ValueError):
-            settings.get_value('c')
+        self.assertIsNone(settings.get_value('c'))
         settings = ContextManager(WORK_DIR).context_settings()
         self.assertEquals(settings.get_value('a'), 1)
         self.assertEquals(settings.get_value('b'), 1)
-        with self.assertRaises(ValueError):
-            settings.get_value('c')
+        self.assertIsNone(settings.get_value('c'))
 
 
 if __name__ == '__main__':

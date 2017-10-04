@@ -1,6 +1,6 @@
 type: SQL
 spec:
-    elements:
+    components:
         - type: CONST
           value: 'SELECT id, name FROM'
         - type: VAR
