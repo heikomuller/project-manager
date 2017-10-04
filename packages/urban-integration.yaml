@@ -1,0 +1,58 @@
+- name: eq-sim-ji
+  package: 'urban-integration.signatures'
+  description: Cosine similarity for a pair of equivalence class signatures generated using Jaccard Index
+  command:
+    - type: CONST
+      value: 'java -jar'
+    - type: VAR
+      value: '[[pmngr.urban-integration.jarDir]]/EQSimilariyPrinter.jar'
+      varType: 'EXEC'
+    - type: VAR
+      value: '[[files.urban-integration.column-term-index]]'
+      varType: 'FILE'
+      asInput: True
+    - type: CONST
+      value: 'JI'
+    - type: VAR
+      value: '[[eq1]]'
+      varType: VALUE
+    - type: VAR
+      value: '[[eq2]]'
+      varType: VALUE
+  output:
+    type: 'VALUE'
+    location: 'STDOUT'
+  install:
+    tasks:
+        - type: 'DOWNLOAD'
+          source: 'http://cds-swg1.cims.nyu.edu/prm/urban-integration/EQSimilariyPrinter.jar'
+          target: '[[pmngr.urban-integration.jarDir]]/EQSimilariyPrinter.jar'
+- name: eq-sim-csw
+  package: 'urban-integration.signatures'
+  description: Cosine similarity for a pair of equivalence class signatures generated using Column Size Weight
+  command:
+    - type: CONST
+      value: 'java -jar'
+    - type: VAR
+      value: '[[pmngr.urban-integration.jarDir]]/EQSimilariyPrinter.jar'
+      varType: 'EXEC'
+    - type: VAR
+      value: '[[files.urban-integration.column-term-index]]'
+      varType: 'FILE'
+      asInput: True
+    - type: CONST
+      value: 'CSW:SUM:[[files.urban-integration.column-term-count]]'
+    - type: VAR
+      value: '[[eq1]]'
+      varType: VALUE
+    - type: VAR
+      value: '[[eq2]]'
+      varType: VALUE
+  output:
+    type: 'VALUE'
+    location: 'STDOUT'
+  install:
+    tasks:
+        - type: 'DOWNLOAD'
+          source: 'http://cds-swg1.cims.nyu.edu/prm/urban-integration/EQSimilariyPrinter.jar'
+          target: '[[pmngr.urban-integration.jarDir]]/EQSimilariyPrinter.jar'

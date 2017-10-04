@@ -5,6 +5,8 @@ import yaml
 
 import prjrepo.config as conf
 from prjrepo.config.context import ContextManager
+from prjrepo.workflow.repository import DefaultCommandRepository
+
 
 PROJECT_DIR = './.prm'
 WORK_DIR = './db'
@@ -17,7 +19,10 @@ class TestContextManager(unittest.TestCase):
         """Initialize settings files."""
         with open(os.path.join(PROJECT_DIR, conf.SETTINGS_FILE), 'w') as f:
             yaml.dump({'a' : 1, 'b': 2}, f, default_flow_style=False)
-        with open(os.path.join(PROJECT_DIR, conf.CONTEXT_DIR, 'A.yaml'), 'w') as f:
+        context_dir = os.path.join(PROJECT_DIR, conf.CONTEXT_DIR)
+        if not os.path.isdir(context_dir):
+            os.makedirs(context_dir)
+        with open(os.path.join(context_dir, 'A.yaml'), 'w') as f:
             yaml.dump({'b' : 1, 'c': 2}, f, default_flow_style=False)
         with open(os.path.join(PROJECT_DIR, conf.CONTEXTLIST_FILE), 'w') as f:
             f.write('db\tA.yaml\n')
@@ -53,7 +58,9 @@ class TestContextManager(unittest.TestCase):
     def test_list_context_commands(self):
         """Command to execute SQL query that lists datasets."""
         for directory in [WORK_DIR, SUB_DIR]:
-            commands = ContextManager(directory).commands().list_commands()
+            commands = DefaultCommandRepository(
+                ContextManager(directory).cmd_dir
+            ).list_commands()
             self.assertTrue('list-datasets' in commands)
             self.assertTrue('run-java' in commands)
 

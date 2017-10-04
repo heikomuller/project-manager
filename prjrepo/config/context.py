@@ -4,7 +4,6 @@ import os
 import uuid
 import yaml
 
-import prjrepo.command.repository as cmd
 import prjrepo.config as conf
 
 
@@ -54,15 +53,6 @@ class ContextManager(object):
         prjrepo.config.context.Config
         """
         return Config(self.get_context_files(), False)
-
-    def commands(self):
-        """Get the command repository for the project context.
-
-        Returns
-        -------
-        prjrepo.command.repository.CommandRepository
-        """
-        return cmd.DefaultCommandRepository(self.cmd_dir)
 
     def create_context(self):
         """Create a new context for the current working directory.

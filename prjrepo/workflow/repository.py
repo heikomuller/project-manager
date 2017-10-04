@@ -4,7 +4,7 @@ from abc import abstractmethod
 import os
 import yaml
 
-import prjrepo.command as cmd
+import prjrepo.workflow.command as cmd
 
 
 class CommandRepository(object):

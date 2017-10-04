@@ -1,6 +1,6 @@
 import unittest
 
-from prjrepo.command.repository import DefaultCommandRepository
+from prjrepo.workflow.repository import DefaultCommandRepository
 
 
 COMMAND_DIR = './.prm/commands'

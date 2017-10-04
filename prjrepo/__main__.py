@@ -5,7 +5,8 @@ import sys
 
 import prjrepo.config as conf
 import prjrepo.config.context as cntxt
-import prjrepo.engine as eng
+import prjrepo.workflow.engine as eng
+import prjrepo.log as log
 
 
 # ------------------------------------------------------------------------------
@@ -54,7 +55,7 @@ These are the commands for the project repository manager:
   log       Show execution history
 
   run       Run a registered script command
-            <command-name> [<arguments>]
+            [--print] <command-name> [<arguments>]
 """
 
 
@@ -120,7 +121,9 @@ def main(prg_name, args):
     elif cmd_name == CMD_LOG:
         # Print the list of experiment script commands that have been run
         if len(args) == 1:
-            print_log()
+            logger = log.DefaultLogger(cntxt.ContextManager('.').log_file)
+            for line in logger.lines():
+                print line
         else:
             print ' '.join(cmd_help)
     elif cmd_name == CMD_PROJECT:
@@ -148,15 +151,22 @@ def main(prg_name, args):
             print ' '.join(cmd_help)
     elif cmd_name == CMD_RUN:
         # Run a registered command
-        # <command-name> [<arguments> ...]
+        # [--print] <command-name> [<arguments> ...]
         if len(args) >= 2:
-            eng.WorkflowEngine().run_command(
-                cntxt.ContextManager('.'),
+            print_only = False
+            if args[1] == '--print':
+                print_only = True
+                args = args[1:]
+        if len(args) >= 2:
+            context = cntxt.ContextManager('.')
+            eng.WorkflowEngine(log.DefaultLogger(context.log_file)).run_command(
+                context,
                 args[1],
-                parse_args(args[2:])
+                parse_args(args[2:]),
+                print_only=print_only
             )
         else:
-            cmd_help += ['<command-name>', '[<arguments> ...]']
+            cmd_help += ['[--print]', '<command-name>', '[<arguments> ...]']
             print ' '.join(cmd_help)
     elif cmd_name == '--help':
         # Print help information
